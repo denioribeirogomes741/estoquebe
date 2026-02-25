@@ -14,7 +14,24 @@ export interface Item {
   marca: string;
   precoCusto: number;
   precoVenda: number;
-  quantidade: number; // NOVO CAMPO
+  quantidade: number;
   usado: boolean;
+  observacoes?: string;
+  fotoUrl?: string;
   createdAt?: Date;
+}
+
+// NOVO - Interface de Venda
+export interface Venda {
+  id: string;
+  itemId: string;
+  itemCodigo: string;
+  itemNome: string;
+  itemCategoria: string;
+  quantidade: number;
+  precoUnitario: number;
+  precoTotal: number;
+  dataVenda: Date;
+  cliente?: string;
+  observacao?: string;
 }

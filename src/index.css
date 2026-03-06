@@ -1,3 +1,331 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ============================================
+   DESIGN SYSTEM - Estilo SaaS Premium
+   Inspirado em Stripe, Notion, Webflow
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Cores Principais - Paleta sofisticada */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-700: #1d4ed8;
+  --primary-900: #1e3a8a;
+  
+  /* Cores de Sucesso - Verde sofisticado */
+  --success-50: #f0fdf4;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+  
+  /* Cores Neutras - Cinza elegante */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  
+  /* Sombras Premium */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  
+  /* Bordas */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  
+  /* Transições */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base */
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  background-color: var(--gray-50);
+  color: var(--gray-800);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   COMPONENTES CUSTOMIZADOS
+   ============================================ */
+
+/* Cards Premium */
+.card-premium {
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.card-premium:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Botões Premium */
+.btn-premium {
+  position: relative;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-lg);
+  padding: 0.625rem 1.25rem;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.btn-premium:hover::before {
+  opacity: 1;
+}
+
+.btn-premium:active {
+  transform: scale(0.98);
+}
+
+/* Gradientes sutis */
+.btn-gradient-primary {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
+}
+
+.btn-gradient-primary:hover {
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.23);
+  transform: translateY(-1px);
+}
+
+.btn-gradient-success {
+  background: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%);
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.39);
+}
+
+.btn-gradient-success:hover {
+  box-shadow: 0 6px 20px 0 rgba(34, 197, 94, 0.23);
+  transform: translateY(-1px);
+}
+
+/* Headers de Seção */
+.section-header {
+  background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-800) 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-xl);
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.section-header-success {
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-600) 100%);
+}
+
+.section-header-primary {
+  background: linear-gradient(135deg, var(--primary-700) 0%, var(--primary-600) 100%);
+}
+
+/* Inputs Premium */
+.form-control-premium {
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  transition: all var(--transition-fast);
+  background: white;
+}
+
+.form-control-premium:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 4px var(--primary-100);
+}
+
+/* Badges Premium */
+.badge-premium {
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+/* Tabelas Premium */
+.table-premium {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-premium th {
+  background: var(--gray-50);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+  padding: 1rem;
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.table-premium td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--gray-100);
+  vertical-align: middle;
+}
+
+.table-premium tr:hover td {
+  background: var(--gray-50);
+}
+
+/* Modais Premium */
+.modal-premium .modal-content {
+  border: none;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-2xl);
+}
+
+.modal-premium .modal-header {
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 1.5rem;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+}
+
+.modal-premium .modal-body {
+  padding: 1.5rem;
+}
+
+.modal-premium .modal-footer {
+  border-top: 1px solid var(--gray-200);
+  padding: 1rem 1.5rem;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-slow) ease-out;
+}
+
+/* Scrollbar Premium */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* Utilitários */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-lift {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary-600), var(--primary-800));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Stats Cards */
+.stat-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  border: 1px solid var(--gray-200);
+  transition: all var(--transition-base);
+}
+
+.stat-card:hover {
+  border-color: var(--primary-200);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--gray-400);
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

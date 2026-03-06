@@ -32,6 +32,6 @@ export interface Venda {
   precoUnitario: number;
   precoTotal: number;
   dataVenda: Date;
-  cliente?: string;
-  observacao?: string;
+  cliente: string;      // removido o ?, sempre string (vazia ou preenchida)
+  observacao: string;   // removido o ?, sempre string (vazia ou preenchida)
 }

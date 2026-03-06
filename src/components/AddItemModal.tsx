@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 import { Item, Categoria } from '../types';
 
 interface AddItemModalProps {
@@ -16,8 +17,10 @@ export default function AddItemModal({ categorias, onClose, onSave }: AddItemMod
     marca: '',
     precoCusto: 0,
     precoVenda: 0,
-    quantidade: 1, // PADRÃO 1
-    usado: false
+    quantidade: 1,
+    usado: false,
+    observacoes: '',
+    fotoUrl: ''
   });
 
   const handleCategoriaChange = (categoriaId: string) => {
@@ -38,159 +41,158 @@ export default function AddItemModal({ categorias, onClose, onSave }: AddItemMod
       alert('Selecione uma categoria!');
       return;
     }
-    if (formData.quantidade < 1) {
-      alert('Quantidade deve ser pelo menos 1!');
-      return;
-    }
     onSave(formData);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Novo Item</h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
+    <Modal show onHide={onClose} centered size="lg">
+      <Modal.Header closeButton className="bg-success text-white">
+        <Modal.Title>+ Novo Item</Modal.Title>
+      </Modal.Header>
+      
+      <Form onSubmit={handleSubmit}>
+        <Modal.Body>
+          <Row className="g-3">
+            <Col md={12}>
+              <Form.Group>
+                <Form.Label>Categoria *</Form.Label>
+                <Form.Select
+                  required
+                  value={formData.categoriaId}
+                  onChange={(e) => handleCategoriaChange(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nome} ({cat.abreviacao})
+                    </option>
+                  ))}
+                </Form.Select>
+                {categorias.length === 0 && (
+                  <Form.Text className="text-danger">
+                    Cadastre uma categoria primeiro!
+                  </Form.Text>
+                )}
+              </Form.Group>
+            </Col>
+
+            <Col md={8}>
+              <Form.Group>
+                <Form.Label>Nome do Item *</Form.Label>
+                <Form.Control
+                  type="text"
+                  required
+                  placeholder="Ex: Driver Titânio"
+                  value={formData.nome}
+                  onChange={(e) => setFormData({...formData, nome: e.target.value})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Marca *</Form.Label>
+                <Form.Control
+                  type="text"
+                  required
+                  placeholder="Ex: TaylorMade"
+                  value={formData.marca}
+                  onChange={(e) => setFormData({...formData, marca: e.target.value})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Preço Custo (R$) *</Form.Label>
+                <Form.Control
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={formData.precoCusto || ''}
+                  onChange={(e) => setFormData({...formData, precoCusto: parseFloat(e.target.value) || 0})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Preço Venda (R$) *</Form.Label>
+                <Form.Control
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={formData.precoVenda || ''}
+                  onChange={(e) => setFormData({...formData, precoVenda: parseFloat(e.target.value) || 0})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Quantidade *</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="1"
+                  required
+                  value={formData.quantidade}
+                  onChange={(e) => setFormData({...formData, quantidade: parseInt(e.target.value) || 1})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={12}>
+              <Form.Group>
+                <Form.Label>URL da Foto (opcional)</Form.Label>
+                <Form.Control
+                  type="url"
+                  placeholder="https://exemplo.com/foto.jpg"
+                  value={formData.fotoUrl}
+                  onChange={(e) => setFormData({...formData, fotoUrl: e.target.value})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={12}>
+              <Form.Group>
+                <Form.Label>Observações (opcional)</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  placeholder="Detalhes adicionais..."
+                  value={formData.observacoes}
+                  onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={12}>
+              <Form.Check
+                type="checkbox"
+                id="novo-usado"
+                label="Item Usado"
+                checked={formData.usado}
+                onChange={(e) => setFormData({...formData, usado: e.target.checked})}
+              />
+            </Col>
+          </Row>
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            variant="success"
+            disabled={!formData.categoriaId}
           >
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Select de Categoria */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Categoria *
-            </label>
-            <select
-              required
-              value={formData.categoriaId}
-              onChange={(e) => handleCategoriaChange(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Selecione uma categoria...</option>
-              {categorias.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.nome} ({cat.abreviacao})
-                </option>
-              ))}
-            </select>
-            {categorias.length === 0 && (
-              <p className="text-red-500 text-sm mt-1">
-                ⚠️ Cadastre uma categoria primeiro!
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nome do Item *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: Driver Titânio"
-              value={formData.nome}
-              onChange={(e) => setFormData({...formData, nome: e.target.value})}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Marca *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ex: TaylorMade, Callaway..."
-              value={formData.marca}
-              onChange={(e) => setFormData({...formData, marca: e.target.value})}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Preço de Custo (R$) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                placeholder="0,00"
-                value={formData.precoCusto || ''}
-                onChange={(e) => setFormData({...formData, precoCusto: parseFloat(e.target.value) || 0})}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Preço de Venda (R$) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                placeholder="0,00"
-                value={formData.precoVenda || ''}
-                onChange={(e) => setFormData({...formData, precoVenda: parseFloat(e.target.value) || 0})}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* CAMPO QUANTIDADE */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Quantidade em Estoque *
-            </label>
-            <input
-              type="number"
-              min="1"
-              required
-              value={formData.quantidade}
-              onChange={(e) => setFormData({...formData, quantidade: parseInt(e.target.value) || 1})}
-              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 bg-gray-50 p-3 rounded">
-            <input
-              type="checkbox"
-              id="novo-usado"
-              checked={formData.usado}
-              onChange={(e) => setFormData({...formData, usado: e.target.checked})}
-              className="w-4 h-4 text-blue-600"
-            />
-            <label htmlFor="novo-usado" className="text-sm font-medium text-gray-700">
-              Este item é <span className="font-bold text-yellow-600">USADO</span>
-            </label>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded-lg font-semibold transition"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={!formData.categoriaId}
-              className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              + Adicionar ao Estoque
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            + Adicionar
+          </Button>
+        </Modal.Footer>
+      </Form>
+    </Modal>
   );
 }

@@ -1,5 +1,16 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { Venda } from '../types';
+import { Modal, Button, Form, Badge, Table, Row, Col } from 'react-bootstrap';
+import { 
+  X, 
+  Printer, 
+  Calendar, 
+  Filter,
+  TrendingUp,
+  DollarSign,
+  Package,
+  FileText
+} from 'lucide-react';
 
 interface RelatorioVendasModalProps {
   vendas: Venda[];
@@ -13,7 +24,6 @@ export default function RelatorioVendasModal({ vendas, onClose }: RelatorioVenda
   const [filtro, setFiltro] = useState<FiltroPeriodo>('todos');
   const [dataSelecionada, setDataSelecionada] = useState<string>('');
 
-  // Filtrar vendas por período
   const vendasFiltradas = useMemo(() => {
     if (filtro === 'todos') return vendas;
     if (!dataSelecionada) return vendas;
@@ -37,7 +47,6 @@ export default function RelatorioVendasModal({ vendas, onClose }: RelatorioVenda
     });
   }, [vendas, filtro, dataSelecionada]);
 
-  // Agrupar vendas por data
   const vendasPorData = useMemo(() => {
     const grupos: { [key: string]: Venda[] } = {};
     
@@ -52,7 +61,6 @@ export default function RelatorioVendasModal({ vendas, onClose }: RelatorioVenda
     );
   }, [vendasFiltradas]);
 
-  // Totais
   const totalVendas = vendasFiltradas.length;
   const totalItens = vendasFiltradas.reduce((sum, v) => sum + v.quantidade, 0);
   const totalReceita = vendasFiltradas.reduce((sum, v) => sum + v.precoTotal, 0);
@@ -68,38 +76,30 @@ export default function RelatorioVendasModal({ vendas, onClose }: RelatorioVenda
       <html>
         <head>
           <title>Relatório de Vendas</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { text-align: center; color: #333; margin-bottom: 10px; }
-            .periodo { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #16a34a; color: white; }
-            tr:nth-child(even) { background-color: #f9fafb; }
-            .data-header { background-color: #15803d; color: white; font-weight: bold; }
-            .total-row { font-weight: bold; background-color: #dcfce7; }
-            .valor { text-align: right; }
-            .qtd { text-align: center; }
-            .resumo { margin-top: 30px; padding: 20px; background-color: #f0fdf4; border-radius: 8px; }
-            .resumo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center; }
-            .resumo-item h3 { margin: 0; color: #166534; font-size: 24px; }
-            .resumo-item p { margin: 5px 0 0; color: #666; font-size: 12px; }
-            @media print {
-              .no-print { display: none; }
-              body { margin: 0; }
+            @media print { 
+              .no-print { display: none; } 
+              body { font-family: 'Inter', sans-serif; }
             }
+            .report-header { 
+              background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+              color: white;
+              padding: 2rem;
+              border-radius: 16px 16px 0 0;
+            }
+            .stat-card { 
+              background: #f0fdf4; 
+              border-radius: 12px; 
+              padding: 1.5rem;
+              text-align: center;
+            }
+            table { border-collapse: separate; border-spacing: 0; }
+            th { background: #f9fafb; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
           </style>
         </head>
-        <body>
+        <body class="bg-light p-4">
           ${printContent.innerHTML}
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-                window.close();
-              }, 500);
-            };
-          </script>
         </body>
       </html>
     `);
@@ -126,169 +126,233 @@ export default function RelatorioVendasModal({ vendas, onClose }: RelatorioVenda
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
-        
-        {/* Header */}
-        <div className="bg-green-600 text-white p-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold">📊 Relatório de Vendas</h2>
-          <div className="flex gap-3">
-            <button 
+    <Modal 
+      show 
+      onHide={onClose} 
+      fullscreen
+      contentClassName="bg-light"
+    >
+      {/* Header */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+        padding: '1.5rem 2rem',
+      }}>
+        <div className="d-flex justify-content-between align-items-center text-white">
+          <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center justify-content-center rounded-xl" style={{ 
+              width: '48px', 
+              height: '48px', 
+              background: 'rgba(255,255,255,0.2)'
+            }}>
+              <FileText size={24} color="white" />
+            </div>
+            <div>
+              <h4 className="mb-0 fw-bold">Relatório de Vendas</h4>
+              <p className="mb-0 small opacity-75">{getTituloPeriodo()}</p>
+            </div>
+          </div>
+          
+          <div className="d-flex gap-2">
+            <Button 
               onClick={handlePrint}
-              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg font-semibold transition"
+              className="btn-premium d-flex align-items-center gap-2"
+              style={{ 
+                background: 'rgba(255,255,255,0.2)', 
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white'
+              }}
             >
-              🖨️ Imprimir
-            </button>
-            <button 
+              <Printer size={18} />
+              Imprimir
+            </Button>
+            <Button 
+              variant="link" 
               onClick={onClose}
-              className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold transition"
+              className="text-white p-2"
+              style={{ textDecoration: 'none' }}
             >
-              ✕ Fechar
-            </button>
+              <X size={24} />
+            </Button>
           </div>
         </div>
+      </div>
 
+      <Modal.Body className="p-4">
         {/* Filtros */}
-        <div className="p-4 bg-gray-50 border-b">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por</label>
-              <select
+        <div className="card-premium p-4 mb-4">
+          <Row className="g-3 align-items-end">
+            <Col md={3}>
+              <Form.Label className="fw-semibold small text-secondary d-flex align-items-center gap-2">
+                <Filter size={14} />
+                Filtrar por
+              </Form.Label>
+              <Form.Select
                 value={filtro}
                 onChange={(e) => {
                   setFiltro(e.target.value as FiltroPeriodo);
                   setDataSelecionada('');
                 }}
-                className="p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                className="form-control-premium"
               >
-                <option value="todos">Todos os períodos</option>
+                <option value="todos">Todo o histórico</option>
                 <option value="dia">Dia específico</option>
                 <option value="mes">Mês específico</option>
                 <option value="ano">Ano específico</option>
-              </select>
-            </div>
+              </Form.Select>
+            </Col>
             
             {filtro !== 'todos' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {filtro === 'dia' ? 'Selecione o dia' : filtro === 'mes' ? 'Selecione o mês' : 'Selecione o ano'}
-                </label>
-                <input
+              <Col md={3}>
+                <Form.Label className="fw-semibold small text-secondary d-flex align-items-center gap-2">
+                  <Calendar size={14} />
+                  {filtro === 'dia' ? 'Data' : filtro === 'mes' ? 'Mês/Ano' : 'Ano'}
+                </Form.Label>
+                <Form.Control
                   type={filtro === 'dia' ? 'date' : filtro === 'mes' ? 'month' : 'number'}
                   min={filtro === 'ano' ? '2000' : undefined}
                   max={filtro === 'ano' ? '2100' : undefined}
                   value={dataSelecionada}
                   onChange={(e) => setDataSelecionada(e.target.value)}
-                  className="p-2 border rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder={filtro === 'ano' ? '2024' : undefined}
+                  className="form-control-premium"
                 />
-              </div>
+              </Col>
             )}
 
             {dataSelecionada && (
-              <button
-                onClick={() => setDataSelecionada('')}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition"
-              >
-                Limpar filtro
-              </button>
+              <Col md="auto">
+                <Button 
+                  variant="outline-secondary" 
+                  onClick={() => setDataSelecionada('')}
+                  className="btn-premium"
+                >
+                  Limpar
+                </Button>
+              </Col>
             )}
-          </div>
+          </Row>
         </div>
 
-        {/* Conteúdo para Impressão */}
-        <div ref={printRef} className="overflow-y-auto p-6 bg-white">
-          
-          <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">Relatório de Vendas</h1>
-          <p className="text-center text-gray-600 mb-6">{getTituloPeriodo()}</p>
+        {/* Conteúdo para impressão */}
+        <div ref={printRef}>
+          {/* Stats */}
+          <Row className="g-3 mb-4">
+            <Col md={4}>
+              <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
+                <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
+                  <FileText size={20} style={{ color: '#3b82f6' }} />
+                </div>
+                <div className="stat-value text-primary">{totalVendas}</div>
+                <div className="stat-label">vendas realizadas</div>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="stat-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+                <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
+                  <Package size={20} style={{ color: '#8b5cf6' }} />
+                </div>
+                <div className="stat-value" style={{ color: '#8b5cf6' }}>{totalItens}</div>
+                <div className="stat-label">itens vendidos</div>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="stat-card" style={{ borderLeft: '4px solid #22c55e' }}>
+                <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
+                  <DollarSign size={20} style={{ color: '#22c55e' }} />
+                </div>
+                <div className="stat-value text-success">R$ {totalReceita.toFixed(2)}</div>
+                <div className="stat-label">receita total</div>
+              </div>
+            </Col>
+          </Row>
 
-          {/* Resumo */}
-          <div className="bg-green-50 p-6 rounded-lg mb-6">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-sm text-gray-600">Total de Vendas</p>
-                <p className="text-3xl font-bold text-green-600">{totalVendas}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Itens Vendidos</p>
-                <p className="text-3xl font-bold text-blue-600">{totalItens}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Receita Total</p>
-                <p className="text-3xl font-bold text-purple-600">R$ {totalReceita.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabela de Vendas por Data */}
+          {/* Tabelas */}
           {vendasPorData.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">Nenhuma venda encontrada neste período</p>
+            <div className="empty-state card-premium">
+              <div className="empty-state-icon">📊</div>
+              <h4 className="h5 text-secondary mb-2">Nenhuma venda encontrada</h4>
+              <p className="text-secondary mb-0">Ajuste o período do relatório</p>
+            </div>
           ) : (
             vendasPorData.map(([data, vendasDoDia]) => {
               const totalDia = vendasDoDia.reduce((sum, v) => sum + v.precoTotal, 0);
               const itensDia = vendasDoDia.reduce((sum, v) => sum + v.quantidade, 0);
               
               return (
-                <div key={data} className="mb-6">
-                  <table>
-                    <thead>
-                      <tr className="data-header">
-                        <th colSpan={6}>
-                          📅 {data} — {vendasDoDia.length} venda(s), {itensDia} item(ns)
-                        </th>
-                      </tr>
+                <div key={data} className="card-premium mb-4 overflow-hidden">
+                  <div className="p-3" style={{ 
+                    background: 'linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%)',
+                    borderBottom: '1px solid #bfdbfe'
+                  }}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="d-flex align-items-center gap-2">
+                        <Calendar size={18} className="text-primary" />
+                        <strong className="text-primary">{data}</strong>
+                      </div>
+                      <Badge bg="primary" className="px-3 py-2">
+                        {vendasDoDia.length} venda(s) • {itensDia} item(ns) • R$ {totalDia.toFixed(2)}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <Table className="mb-0">
+                    <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th>Código</th>
-                        <th>Item</th>
-                        <th>Qtd</th>
-                        <th>Preço Unit.</th>
-                        <th>Total</th>
-                        <th>Cliente</th>
+                        <th className="fw-semibold text-secondary small text-uppercase">Item</th>
+                        <th className="fw-semibold text-secondary small text-uppercase text-center">Qtd</th>
+                        <th className="fw-semibold text-secondary small text-uppercase text-end">Unitário</th>
+                        <th className="fw-semibold text-secondary small text-uppercase text-end">Total</th>
+                        <th className="fw-semibold text-secondary small text-uppercase">Cliente</th>
                       </tr>
                     </thead>
                     <tbody>
                       {vendasDoDia.map((venda) => (
                         <tr key={venda.id}>
-                          <td className="font-mono">{venda.itemCodigo}</td>
-                          <td>{venda.itemNome}</td>
-                          <td className="qtd">{venda.quantidade}</td>
-                          <td className="valor">R$ {venda.precoUnitario.toFixed(2)}</td>
-                          <td className="valor font-semibold">R$ {venda.precoTotal.toFixed(2)}</td>
-                          <td>{venda.cliente || '-'}</td>
+                          <td>
+                            <div className="d-flex align-items-center gap-2">
+                              <Badge bg="light" text="dark" className="font-monospace">
+                                {venda.itemCodigo}
+                              </Badge>
+                              <div>
+                                <p className="mb-0 fw-semibold">{venda.itemNome}</p>
+                                <small className="text-secondary">{venda.itemCategoria}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-center fw-bold">{venda.quantidade}</td>
+                          <td className="text-end">R$ {venda.precoUnitario.toFixed(2)}</td>
+                          <td className="text-end fw-bold text-success">R$ {venda.precoTotal.toFixed(2)}</td>
+                          <td className="text-secondary">{venda.cliente || '-'}</td>
                         </tr>
                       ))}
-                      <tr className="total-row">
-                        <td colSpan={2} className="text-right">Subtotal do dia:</td>
-                        <td className="qtd">{itensDia}</td>
+                      <tr style={{ background: '#f0fdf4' }}>
+                        <td colSpan={2} className="text-end fw-bold">Subtotal do dia:</td>
                         <td></td>
-                        <td className="valor font-bold">R$ {totalDia.toFixed(2)}</td>
+                        <td className="text-end fw-bold text-success">R$ {totalDia.toFixed(2)}</td>
                         <td></td>
                       </tr>
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               );
             })
           )}
 
-          {/* Total Geral */}
           {vendasFiltradas.length > 0 && (
-            <div className="mt-8 pt-4 border-t-2 border-green-600">
-              <table>
-                <tbody>
-                  <tr className="text-xl font-bold bg-green-100">
-                    <td colSpan={2} className="text-right">TOTAL GERAL:</td>
-                    <td className="qtd text-green-700">{totalItens}</td>
-                    <td></td>
-                    <td className="valor text-green-700">R$ {totalReceita.toFixed(2)}</td>
-                    <td></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="card-premium p-4" style={{ 
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              border: '2px solid #86efac'
+            }}>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0 fw-bold text-success">TOTAL GERAL</h5>
+                <div className="text-end">
+                  <p className="mb-0 small text-secondary">{totalItens} itens vendidos</p>
+                  <h3 className="mb-0 fw-bold text-success">R$ {totalReceita.toFixed(2)}</h3>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 }

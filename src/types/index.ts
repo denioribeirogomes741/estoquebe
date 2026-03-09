@@ -2,6 +2,7 @@ export interface Categoria {
   id: string;
   nome: string;
   abreviacao: string;
+  ordem?: number;
 }
 
 export interface Item {

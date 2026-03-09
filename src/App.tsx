@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { 
   collection, 
   addDoc, 
@@ -62,6 +62,7 @@ function App() {
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
   const [isRelatorioOpen, setIsRelatorioOpen] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState<'estoque' | 'vendas'>('estoque');
+  const [categoriasExpandidas, setCategoriasExpandidas] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,12 +80,19 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'categorias'), orderBy('nome'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, 'categorias'), (snapshot) => {
       const cats: Categoria[] = [];
       snapshot.forEach((doc) => {
         cats.push({ id: doc.id, ...doc.data() } as Categoria);
       });
+
+      cats.sort((a, b) => {
+        const ordemA = a.ordem ?? Number.MAX_SAFE_INTEGER;
+        const ordemB = b.ordem ?? Number.MAX_SAFE_INTEGER;
+        if (ordemA !== ordemB) return ordemA - ordemB;
+        return a.nome.localeCompare(b.nome, 'pt-BR');
+      });
+
       setCategorias(cats);
     });
 
@@ -114,9 +122,15 @@ function App() {
 
   const addCategoria = async (nome: string, abreviacao: string) => {
     try {
+      const proximaOrdem = categorias.reduce(
+        (max, categoria) => Math.max(max, categoria.ordem ?? -1),
+        -1
+      ) + 1;
+
       await addDoc(collection(db, 'categorias'), {
         nome,
-        abreviacao: abreviacao.toUpperCase()
+        abreviacao: abreviacao.toUpperCase(),
+        ordem: proximaOrdem
       });
     } catch (error) {
       alert('Erro ao salvar categoria.');
@@ -226,6 +240,13 @@ function App() {
   const getLabelQualidade = (nivel: number) => {
     const labels = ['Básico', 'Inicial', 'Intermediário', 'Avançado', 'Premium'];
     return labels[nivel - 1] || 'Básico';
+  };
+
+  const toggleCategoria = (categoriaId: string) => {
+    setCategoriasExpandidas((prev) => ({
+      ...prev,
+      [categoriaId]: !prev[categoriaId]
+    }));
   };
 
   if (loading) {
@@ -556,42 +577,59 @@ function App() {
             )}
           </div>
         ) : (
-          <div className="d-flex flex-column gap-4">
-            {itensPorCategoria.map(({ categoria, itens }) => (
-              <div key={categoria.id} className="animate-fade-in">
-                {/* Category Header */}
-                <div className="d-flex align-items-center gap-3 mb-3 px-1">
-                  <div className="d-flex align-items-center justify-content-center rounded-lg fw-bold text-white" style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    fontSize: '0.875rem'
-                  }}>
-                    {categoria.abreviacao}
-                  </div>
-                  <div className="flex-grow-1">
-                    <h3 className="h5 fw-bold mb-0 text-gray-900">{categoria.nome}</h3>
-                    <p className="mb-0 small text-secondary">
-                      {itens.length} produtos • {itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades
-                    </p>
-                  </div>
-                  <ChevronRight size={20} className="text-secondary" />
-                </div>
+          <div className="d-flex flex-column gap-3">
+            {itensPorCategoria.map(({ categoria, itens }) => {
+              const expandida = Boolean(categoriasExpandidas[categoria.id]);
 
-                {/* Items Grid */}
-                <Row className="g-3">
-                  {itens.map(item => (
-                    <Col key={item.id} md={6} lg={4} xl={3}>
-                      <ItemCard 
-                        item={item} 
-                        onClick={() => setSelectedItem(item)}
-                        mostrarQualidade={true}
-                      />
-                    </Col>
-                  ))}
-                </Row>
-              </div>
-            ))}
+              return (
+                <div key={categoria.id} className="animate-fade-in card-premium p-3">
+                  {/* Category Header */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCategoria(categoria.id)}
+                    className="w-100 d-flex align-items-center gap-3 px-1 py-1 bg-transparent border-0 text-start"
+                  >
+                    <div className="d-flex align-items-center justify-content-center rounded-lg fw-bold text-white" style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      fontSize: '0.875rem'
+                    }}>
+                      {categoria.abreviacao}
+                    </div>
+                    <div className="flex-grow-1">
+                      <h3 className="h5 fw-bold mb-0 text-gray-900">{categoria.nome}</h3>
+                      <p className="mb-0 small text-secondary">
+                        {itens.length} produtos • {itens.reduce((sum, item) => sum + item.quantidade, 0)} unidades
+                      </p>
+                    </div>
+                    <ChevronRight
+                      size={20}
+                      className="text-secondary"
+                      style={{
+                        transform: expandida ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
+                      }}
+                    />
+                  </button>
+
+                  {/* Items Grid */}
+                  {expandida && (
+                    <Row className="g-3 mt-1">
+                      {itens.map(item => (
+                        <Col key={item.id} md={6} lg={4} xl={3}>
+                          <ItemCard 
+                            item={item} 
+                            onClick={() => setSelectedItem(item)}
+                            mostrarQualidade={true}
+                          />
+                        </Col>
+                      ))}
+                    </Row>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Container>
@@ -641,3 +679,4 @@ function App() {
 }
 
 export default App;
+

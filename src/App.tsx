@@ -5,6 +5,7 @@ import {
   deleteDoc, 
   doc, 
   updateDoc, 
+  writeBatch,
   onSnapshot,
   query,
   orderBy 
@@ -34,6 +35,7 @@ import EditModal from './components/EditModal';
 import AddItemModal from './components/AddItemModal';
 import CategoriaModal from './components/CategoriaModal';
 import RelatorioModal from './components/RelatorioModal';
+import BulkEditModal, { BulkAdvancedChanges } from './components/BulkEditModal';
 import VendasPage from './pages/VendasPage';
 
 // Tipos de filtros avançados
@@ -60,6 +62,7 @@ function App() {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [isRelatorioOpen, setIsRelatorioOpen] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState<'estoque' | 'vendas'>('estoque');
   const [categoriasExpandidas, setCategoriasExpandidas] = useState<Record<string, boolean>>({});
@@ -249,6 +252,88 @@ function App() {
     }));
   };
 
+  const deleteItemsInBulk = async (itemIds: string[]) => {
+    const chunkSize = 400;
+    for (let i = 0; i < itemIds.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = itemIds.slice(i, i + chunkSize);
+      chunk.forEach((itemId) => batch.delete(doc(db, 'estoque', itemId)));
+      await batch.commit();
+    }
+
+    if (selectedItem && itemIds.includes(selectedItem.id)) {
+      setSelectedItem(null);
+    }
+    if (editingItem && itemIds.includes(editingItem.id)) {
+      setEditingItem(null);
+    }
+  };
+
+  const moveItemsToCategoria = async (itemIds: string[], categoriaId: string) => {
+    const categoria = categorias.find((cat) => cat.id === categoriaId);
+    if (!categoria) {
+      throw new Error('Categoria de destino não encontrada.');
+    }
+
+    const chunkSize = 400;
+    for (let i = 0; i < itemIds.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = itemIds.slice(i, i + chunkSize);
+      chunk.forEach((itemId) =>
+        batch.update(doc(db, 'estoque', itemId), {
+          categoriaId: categoria.id,
+          categoriaNome: categoria.nome,
+          categoriaAbreviacao: categoria.abreviacao
+        })
+      );
+      await batch.commit();
+    }
+  };
+
+  const applyBulkAdvancedChanges = async (itemIds: string[], changes: BulkAdvancedChanges) => {
+    const selectedItems = items.filter((item) => itemIds.includes(item.id));
+    const chunkSize = 300;
+
+    for (let i = 0; i < selectedItems.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = selectedItems.slice(i, i + chunkSize);
+      let hasUpdates = false;
+
+      chunk.forEach((item) => {
+        const updateData: Partial<Item> = {};
+
+        if (changes.nivelQualidade !== undefined) {
+          updateData.nivelQualidade = changes.nivelQualidade;
+        }
+
+        if (changes.usado !== undefined) {
+          updateData.usado = changes.usado;
+        }
+
+        let novoPreco = item.precoVenda;
+        if (changes.precoMin !== undefined && novoPreco < changes.precoMin) {
+          novoPreco = changes.precoMin;
+        }
+        if (changes.precoMax !== undefined && novoPreco > changes.precoMax) {
+          novoPreco = changes.precoMax;
+        }
+
+        if (novoPreco !== item.precoVenda) {
+          updateData.precoVenda = novoPreco;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          hasUpdates = true;
+          batch.update(doc(db, 'estoque', item.id), updateData);
+        }
+      });
+
+      if (hasUpdates) {
+        await batch.commit();
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)' }}>
@@ -318,6 +403,16 @@ function App() {
                 <Settings size={18} />
                 <span className="d-none d-md-inline">Categorias</span>
               </Button>
+
+              <Button
+                variant="light"
+                onClick={() => setIsBulkEditOpen(true)}
+                className="btn-premium d-flex align-items-center gap-2"
+                style={{ border: '1px solid #e5e7eb' }}
+              >
+                <SlidersHorizontal size={18} />
+                <span className="d-none d-md-inline">Editor em Massa</span>
+              </Button>
               
               <Button 
                 onClick={() => setIsAddModalOpen(true)}
@@ -343,7 +438,7 @@ function App() {
                 </div>
                 <span className="text-secondary small fw-medium">Total em Estoque</span>
               </div>
-              <div className="stat-value text-gradient">{totalItens}</div>
+              <div className="stat-value text-dark">{totalItens}</div>
               <div className="stat-label">unidades disponíveis</div>
             </div>
           </Col>
@@ -664,6 +759,17 @@ function App() {
         <CategoriaModal
           onClose={() => setIsCategoriaModalOpen(false)}
           onAdd={addCategoria}
+        />
+      )}
+
+      {isBulkEditOpen && (
+        <BulkEditModal
+          items={items}
+          categorias={categorias}
+          onClose={() => setIsBulkEditOpen(false)}
+          onDelete={deleteItemsInBulk}
+          onMoveCategoria={moveItemsToCategoria}
+          onAplicarFiltros={applyBulkAdvancedChanges}
         />
       )}
 

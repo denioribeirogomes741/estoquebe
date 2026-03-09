@@ -19,6 +19,9 @@ export interface Item {
   observacoes?: string;
   fotoUrl?: string;
   createdAt?: Date;
+  // NOVOS CAMPOS - opcionais por enquanto para compatibilidade:
+  nivelQualidade?: 1 | 2 | 3 | 4 | 5; // 1 = Básico, 5 = Premium
+  tagsEspecificas?: string[]; // Ex: ["i7", "16GB RAM", "SSD 512GB"]
 }
 
 // NOVO - Interface de Venda
@@ -32,6 +35,6 @@ export interface Venda {
   precoUnitario: number;
   precoTotal: number;
   dataVenda: Date;
-  cliente: string;      // removido o ?, sempre string (vazia ou preenchida)
-  observacao: string;   // removido o ?, sempre string (vazia ou preenchida)
+  cliente: string;
+  observacao: string;
 }

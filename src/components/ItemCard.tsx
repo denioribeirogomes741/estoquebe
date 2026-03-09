@@ -1,15 +1,36 @@
 import React from 'react';
 import { Badge } from 'react-bootstrap';
-import { Package, AlertCircle } from 'lucide-react';
+import { Package, AlertCircle, Star } from 'lucide-react';
 import { Item } from '../types';
 
 interface ItemCardProps {
   item: Item;
   onClick: () => void;
+  mostrarQualidade?: boolean; // NOVA PROP OPCIONAL
 }
 
-export default function ItemCard({ item, onClick }: ItemCardProps) {
+export default function ItemCard({ item, onClick, mostrarQualidade = false }: ItemCardProps) {
   const isLowStock = item.quantidade <= 5;
+  
+  // Função para renderizar estrelas de qualidade
+  const renderEstrelas = (nivel?: number) => {
+    if (!nivel) return null;
+    return Array(5).fill(0).map((_, i) => (
+      <Star 
+        key={i} 
+        size={10} 
+        fill={i < nivel ? "#fbbf24" : "transparent"}
+        color={i < nivel ? "#f59e0b" : "#d1d5db"}
+        className="me-1"
+      />
+    ));
+  };
+
+  const getLabelQualidade = (nivel?: number) => {
+    if (!nivel) return 'Não classificado';
+    const labels = ['Básico', 'Inicial', 'Intermediário', 'Avançado', 'Premium'];
+    return labels[nivel - 1] || 'Intermediário';
+  };
   
   return (
     <div 
@@ -56,11 +77,23 @@ export default function ItemCard({ item, onClick }: ItemCardProps) {
             )}
           </div>
           
-          {isLowStock && (
-            <div className="d-flex align-items-center gap-1 text-danger" title="Estoque baixo">
-              <AlertCircle size={16} />
-            </div>
-          )}
+          <div className="d-flex flex-column align-items-end gap-1">
+            {isLowStock && (
+              <div className="d-flex align-items-center gap-1 text-danger" title="Estoque baixo">
+                <AlertCircle size={16} />
+              </div>
+            )}
+            
+            {/* MOSTRAR QUALIDADE SE A PROP FOR TRUE */}
+            {mostrarQualidade && item.nivelQualidade && (
+              <div 
+                className="d-flex align-items-center" 
+                title={getLabelQualidade(item.nivelQualidade)}
+              >
+                {renderEstrelas(item.nivelQualidade)}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Content */}
@@ -75,6 +108,26 @@ export default function ItemCard({ item, onClick }: ItemCardProps) {
             {item.nome}
           </h4>
           <p className="small text-secondary mb-0">{item.marca}</p>
+          
+          {/* Tags específicas (se houver e mostrarQualidade=true) */}
+          {mostrarQualidade && item.tagsEspecificas && item.tagsEspecificas.length > 0 && (
+            <div className="d-flex flex-wrap gap-1 mt-2">
+              {item.tagsEspecificas.slice(0, 2).map((tag, index) => (
+                <Badge 
+                  key={index} 
+                  bg="info" 
+                  style={{ fontSize: '0.6rem', padding: '0.2rem 0.4rem' }}
+                >
+                  {tag}
+                </Badge>
+              ))}
+              {item.tagsEspecificas.length > 2 && (
+                <Badge bg="secondary" style={{ fontSize: '0.6rem', padding: '0.2rem 0.4rem' }}>
+                  +{item.tagsEspecificas.length - 2}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

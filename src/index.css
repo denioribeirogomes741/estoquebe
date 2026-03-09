@@ -92,6 +92,7 @@ body {
   padding: 0.625rem 1.25rem;
   transition: all var(--transition-fast);
   border: none;
+  white-space: nowrap;
 }
 
 .btn-premium::before {
@@ -192,6 +193,7 @@ body {
   color: var(--gray-500);
   padding: 1rem;
   border-bottom: 2px solid var(--gray-200);
+  white-space: nowrap;
 }
 
 .table-premium td {
@@ -328,4 +330,180 @@ body {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   RESPONSIVIDADE MOBILE
+   ============================================ */
+
+/* Ajustes gerais para telas pequenas */
+@media (max-width: 768px) {
+  /* Reduzir padding geral */
+  body {
+    font-size: 0.875rem;
+  }
+  
+  /* Cards mais compactos */
+  .card-premium {
+    border-radius: var(--radius-lg);
+  }
+  
+  /* Botões menores em mobile */
+  .btn-premium {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Stats cards em grid de 1 coluna */
+  .stat-card {
+    padding: 1rem;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+  }
+  
+  /* Headers mais compactos */
+  .section-header {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+  }
+  
+  /* Inputs mais tocáveis */
+  .form-control-premium {
+    padding: 0.625rem 0.875rem;
+    font-size: 16px; /* Evita zoom no iOS */
+  }
+  
+  /* Tabelas com scroll horizontal */
+  .table-responsive {
+    border-radius: var(--radius-lg);
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table-premium th,
+  .table-premium td {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Modais em tela cheia no mobile */
+  .modal-premium .modal-content {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    margin: 0;
+    min-height: 100vh;
+  }
+  
+  .modal-premium .modal-header {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: 1rem 1.25rem;
+  }
+  
+  .modal-premium .modal-body {
+    padding: 1.25rem;
+  }
+  
+  /* Empty state menor */
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+  
+  .empty-state-icon {
+    font-size: 3rem;
+  }
+}
+
+/* Ajustes para telas muito pequenas */
+@media (max-width: 480px) {
+  .stat-value {
+    font-size: 1.25rem;
+  }
+  
+  .btn-premium {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+  
+  .badge-premium {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.625rem;
+  }
+  
+  /* Tabela ainda mais compacta */
+  .table-premium th,
+  .table-premium td {
+    padding: 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Ajustes para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .stat-value {
+    font-size: 1.75rem;
+  }
+}
+
+/* Garantir que imagens não estourem */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Touch targets maiores em mobile */
+@media (max-width: 768px) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mas manter inputs de texto normais */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    min-height: auto;
+  }
+}
+
+/* Fix para 100vh no mobile (iOS) */
+@supports (-webkit-touch-callout: none) {
+  .min-vh-100 {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Esconder scrollbar mas manter funcionalidade */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Grid responsivo para cards de produtos */
+@media (max-width: 768px) {
+  .row-cols-2 > * {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+}
+
+@media (max-width: 480px) {
+  .row-cols-1 > * {
+    flex: 0 0 auto;
+    width: 100%;
+  }
 }

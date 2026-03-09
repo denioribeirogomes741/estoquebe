@@ -30,7 +30,10 @@ import {
   ChevronRight,
   Tag,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Star,
+  SlidersHorizontal,
+  X
 } from 'lucide-react';
 import VendaModal from '../components/VendaModal';
 import RelatorioVendasModal from '../components/RelatorioVendasModal';
@@ -40,6 +43,8 @@ interface VendasPageProps {
 }
 
 type FiltroPeriodo = 'todos' | 'dia' | 'mes' | 'ano';
+type Ordenacao = 'nome' | 'precoMenor' | 'precoMaior' | 'qualidade' | 'quantidade';
+type FiltroQualidade = 'todos' | '1' | '2' | '3' | '4' | '5';
 
 // Tipo específico para entrada de venda (sem undefined)
 type VendaInput = {
@@ -58,8 +63,19 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [vendas, setVendas] = useState<Venda[]>([]);
+  
+  // Filtros existentes
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('');
+  
+  // NOVOS FILTROS AVANÇADOS
+  const [filtroQualidade, setFiltroQualidade] = useState<FiltroQualidade>('todos');
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>('nome');
+  const [precoMin, setPrecoMin] = useState<string>('');
+  const [precoMax, setPrecoMax] = useState<string>('');
+  const [mostrarUsados, setMostrarUsados] = useState<boolean | null>(null);
+  const [mostrarFiltrosAvancados, setMostrarFiltrosAvancados] = useState(false);
+  
   const [itemSelecionado, setItemSelecionado] = useState<Item | null>(null);
   const [activeTab, setActiveTab] = useState<'vender' | 'historico'>('vender');
   const [isRelatorioOpen, setIsRelatorioOpen] = useState(false);
@@ -113,7 +129,6 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
 
   const handleVender = async (vendaData: VendaInput) => {
     try {
-      // Garante que nunca seja undefined antes de salvar no Firebase
       const dadosParaSalvar = {
         itemId: vendaData.itemId,
         itemCodigo: vendaData.itemCodigo,
@@ -145,21 +160,52 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
     }
   };
 
-  // Função para abrir confirmação de exclusão
+  const handleVenderCarrinho = async (vendasCarrinho: VendaInput[], totalGeral: number) => {
+    try {
+      for (const venda of vendasCarrinho) {
+        const dadosParaSalvar = {
+          itemId: venda.itemId,
+          itemCodigo: venda.itemCodigo,
+          itemNome: venda.itemNome,
+          itemCategoria: venda.itemCategoria,
+          quantidade: venda.quantidade,
+          precoUnitario: venda.precoUnitario,
+          precoTotal: venda.precoTotal,
+          cliente: venda.cliente || '',
+          observacao: venda.observacao || '',
+          dataVenda: new Date()
+        };
+
+        await addDoc(collection(db, 'vendas'), dadosParaSalvar);
+
+        const itemRef = doc(db, 'estoque', venda.itemId);
+        const itemAtual = items.find(i => i.id === venda.itemId);
+        if (itemAtual) {
+          await updateDoc(itemRef, { 
+            quantidade: itemAtual.quantidade - venda.quantidade 
+          });
+        }
+      }
+
+      setItemSelecionado(null);
+      alert(`✅ ${vendasCarrinho.length} venda(s) registrada(s)! Total: R$ ${totalGeral.toFixed(2)}`);
+    } catch (error) {
+      console.error('Erro ao registrar vendas do carrinho:', error);
+      alert('❌ Erro ao registrar vendas do carrinho');
+    }
+  };
+
   const confirmarExclusao = (venda: Venda) => {
     setVendaParaExcluir(venda);
     setShowConfirmDelete(true);
   };
 
-  // Função para excluir venda
   const handleExcluirVenda = async () => {
     if (!vendaParaExcluir) return;
 
     try {
-      // 1. Excluir a venda do Firebase
       await deleteDoc(doc(db, 'vendas', vendaParaExcluir.id));
 
-      // 2. Devolver a quantidade ao estoque
       const itemRef = doc(db, 'estoque', vendaParaExcluir.itemId);
       const itemAtual = items.find(i => i.id === vendaParaExcluir.itemId);
       
@@ -203,26 +249,60 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
     return filtradas;
   }, [vendas, filtroPeriodo, dataFiltro]);
 
-  const itensDisponiveis = items.filter(item => item.quantidade > 0);
-  
-  const itensFiltrados = useMemo(() => {
-    return itensDisponiveis.filter(item => {
+  // SISTEMA DE FILTROS AVANÇADOS PARA ITENS
+  const itensDisponiveis = useMemo(() => {
+    let resultado = items.filter(item => {
+      const temEstoque = item.quantidade > 0;
+      
       const matchSearch = 
         item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.codigo.toLowerCase().includes(searchTerm.toLowerCase());
+      
       const matchCategoria = categoriaFiltro === '' || item.categoriaId === categoriaFiltro;
-      return matchSearch && matchCategoria;
+      
+      const matchQualidade = filtroQualidade === 'todos' || 
+        item.nivelQualidade === parseInt(filtroQualidade);
+      
+      const preco = item.precoVenda;
+      const matchPrecoMin = precoMin === '' || preco >= parseFloat(precoMin);
+      const matchPrecoMax = precoMax === '' || preco <= parseFloat(precoMax);
+      
+      const matchUsado = mostrarUsados === null || item.usado === mostrarUsados;
+      
+      return temEstoque && matchSearch && matchCategoria && matchQualidade && 
+             matchPrecoMin && matchPrecoMax && matchUsado;
     });
-  }, [itensDisponiveis, searchTerm, categoriaFiltro]);
+
+    // ORDENAÇÃO
+    resultado.sort((a, b) => {
+      switch (ordenacao) {
+        case 'nome':
+          return a.nome.localeCompare(b.nome);
+        case 'precoMenor':
+          return a.precoVenda - b.precoVenda;
+        case 'precoMaior':
+          return b.precoVenda - a.precoVenda;
+        case 'qualidade':
+          return b.nivelQualidade - a.nivelQualidade;
+        case 'quantidade':
+          return b.quantidade - a.quantidade;
+        default:
+          return 0;
+      }
+    });
+
+    return resultado;
+  }, [items, searchTerm, categoriaFiltro, filtroQualidade, ordenacao, 
+      precoMin, precoMax, mostrarUsados]);
 
   const itensPorCategoria = useMemo(() => {
     return categorias
       .map(cat => ({
         categoria: cat,
-        itens: itensFiltrados.filter(item => item.categoriaId === cat.id)
+        itens: itensDisponiveis.filter(item => item.categoriaId === cat.id)
       }))
       .filter(group => group.itens.length > 0);
-  }, [categorias, itensFiltrados]);
+  }, [categorias, itensDisponiveis]);
 
   const totalVendas = vendasFiltradas.length;
   const totalItensVendidos = vendasFiltradas.reduce((sum, v) => sum + v.quantidade, 0);
@@ -242,10 +322,47 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
     );
   }, [vendasFiltradas]);
 
-  // Métricas gerais (todas as vendas)
   const totalVendasGeral = vendas.length;
   const totalReceitaGeral = vendas.reduce((sum, v) => sum + v.precoTotal, 0);
   const totalItensGeral = vendas.reduce((sum, v) => sum + v.quantidade, 0);
+
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setSearchTerm('');
+    setCategoriaFiltro('');
+    setFiltroQualidade('todos');
+    setOrdenacao('nome');
+    setPrecoMin('');
+    setPrecoMax('');
+    setMostrarUsados(null);
+  };
+
+  // Contador de filtros ativos
+  const filtrosAtivos = [
+    searchTerm,
+    categoriaFiltro,
+    filtroQualidade !== 'todos',
+    precoMin || precoMax,
+    mostrarUsados !== null
+  ].filter(Boolean).length;
+
+  const getLabelQualidade = (nivel: number) => {
+    const labels = ['Básico', 'Inicial', 'Intermediário', 'Avançado', 'Premium'];
+    return labels[nivel - 1] || 'Básico';
+  };
+
+  // Renderizar estrelas de qualidade
+  const renderEstrelas = (nivel: number) => {
+    return Array(5).fill(0).map((_, i) => (
+      <Star 
+        key={i} 
+        size={12} 
+        fill={i < nivel ? "#fbbf24" : "transparent"}
+        color={i < nivel ? "#fbbf24" : "#d1d5db"}
+        className="me-1"
+      />
+    ));
+  };
 
   return (
     <div className="min-vh-100" style={{ background: 'linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)' }}>
@@ -331,7 +448,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
           <div>
             {/* Stats Vendas */}
             <Row className="g-3 mb-4">
-              <Col md={4}>
+              <Col md={3}>
                 <div className="stat-card" style={{ borderLeft: '4px solid #22c55e' }}>
                   <div className="d-flex align-items-center gap-3 mb-3">
                     <div className="rounded-lg p-2" style={{ background: '#f0fdf4' }}>
@@ -344,7 +461,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
                 </div>
               </Col>
               
-              <Col md={4}>
+              <Col md={3}>
                 <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
                   <div className="d-flex align-items-center gap-3 mb-3">
                     <div className="rounded-lg p-2" style={{ background: '#eff6ff' }}>
@@ -362,7 +479,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
                 </div>
               </Col>
               
-              <Col md={4}>
+              <Col md={3}>
                 <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
                   <div className="d-flex align-items-center gap-3 mb-3">
                     <div className="rounded-lg p-2" style={{ background: '#fffbeb' }}>
@@ -379,12 +496,28 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
                   <div className="stat-label">em vendas</div>
                 </div>
               </Col>
+              
+              <Col md={3}>
+                <div className="stat-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+                  <div className="d-flex align-items-center gap-3 mb-3">
+                    <div className="rounded-lg p-2" style={{ background: '#f5f3ff' }}>
+                      <Star size={20} style={{ color: '#7c3aed' }} />
+                    </div>
+                    <span className="text-secondary small fw-medium">Itens Premium</span>
+                  </div>
+                  <div className="stat-value" style={{ color: '#7c3aed' }}>
+                    {itensDisponiveis.filter(i => i.nivelQualidade >= 4).length}
+                  </div>
+                  <div className="stat-label">qualidade 4-5 estrelas</div>
+                </div>
+              </Col>
             </Row>
 
-            {/* Search & Filter */}
+            {/* Search & Filter Section - AGORA COM FILTROS AVANÇADOS */}
             <div className="card-premium p-4 mb-4">
-              <Row className="g-3 align-items-end">
-                <Col md={6}>
+              {/* Busca básica */}
+              <Row className="g-3 align-items-end mb-3">
+                <Col md={5}>
                   <Form.Label className="small fw-semibold text-secondary mb-2">
                     <Search size={14} className="me-1" />
                     Buscar produto
@@ -416,25 +549,153 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
                   </Form.Select>
                 </Col>
                 
-                <Col md={2}>
-                  {categoriaFiltro && (
-                    <Button 
-                      variant="outline-secondary" 
-                      onClick={() => setCategoriaFiltro('')}
-                      className="w-100 btn-premium"
-                    >
-                      Limpar
-                    </Button>
-                  )}
+                <Col md={3}>
+                  <Button 
+                    variant={mostrarFiltrosAvancados ? "success" : "light"}
+                    onClick={() => setMostrarFiltrosAvancados(!mostrarFiltrosAvancados)}
+                    className="w-100 btn-premium d-flex align-items-center justify-content-center gap-2"
+                    style={!mostrarFiltrosAvancados ? { border: '1px solid #e5e7eb' } : {}}
+                  >
+                    <SlidersHorizontal size={18} />
+                    Filtros Avançados
+                    {filtrosAtivos > 0 && (
+                      <Badge bg="danger" className="ms-1">{filtrosAtivos}</Badge>
+                    )}
+                  </Button>
                 </Col>
               </Row>
+
+              {/* Filtros Avançados */}
+              {mostrarFiltrosAvancados && (
+                <div className="pt-3 mt-3" style={{ borderTop: '1px solid #e5e7eb' }}>
+                  <Row className="g-3 align-items-end">
+                    {/* Filtro de Qualidade */}
+                    <Col md={3}>
+                      <Form.Label className="small fw-semibold text-secondary mb-2 d-flex align-items-center gap-2">
+                        <Star size={14} />
+                        Qualidade
+                      </Form.Label>
+                      <Form.Select
+                        value={filtroQualidade}
+                        onChange={(e) => setFiltroQualidade(e.target.value as FiltroQualidade)}
+                        className="form-control-premium"
+                      >
+                        <option value="todos">Todas as qualidades</option>
+                        <option value="5">⭐⭐⭐⭐⭐ Premium</option>
+                        <option value="4">⭐⭐⭐⭐ Avançado</option>
+                        <option value="3">⭐⭐⭐ Intermediário</option>
+                        <option value="2">⭐⭐ Inicial</option>
+                        <option value="1">⭐ Básico</option>
+                      </Form.Select>
+                    </Col>
+
+                    {/* Filtro de Preço Mínimo */}
+                    <Col md={2}>
+                      <Form.Label className="small fw-semibold text-secondary mb-2">
+                        Preço Mínimo
+                      </Form.Label>
+                      <Form.Control
+                        type="number"
+                        placeholder="R$ 0,00"
+                        value={precoMin}
+                        onChange={(e) => setPrecoMin(e.target.value)}
+                        className="form-control-premium"
+                      />
+                    </Col>
+
+                    {/* Filtro de Preço Máximo */}
+                    <Col md={2}>
+                      <Form.Label className="small fw-semibold text-secondary mb-2">
+                        Preço Máximo
+                      </Form.Label>
+                      <Form.Control
+                        type="number"
+                        placeholder="R$ ∞"
+                        value={precoMax}
+                        onChange={(e) => setPrecoMax(e.target.value)}
+                        className="form-control-premium"
+                      />
+                    </Col>
+
+                    {/* Filtro de Usado/Novo */}
+                    <Col md={2}>
+                      <Form.Label className="small fw-semibold text-secondary mb-2">
+                        Condição
+                      </Form.Label>
+                      <Form.Select
+                        value={mostrarUsados === null ? '' : mostrarUsados ? 'usado' : 'novo'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMostrarUsados(val === '' ? null : val === 'usado');
+                        }}
+                        className="form-control-premium"
+                      >
+                        <option value="">Todos</option>
+                        <option value="novo">Novos</option>
+                        <option value="usado">Usados</option>
+                      </Form.Select>
+                    </Col>
+
+                    {/* Ordenação */}
+                    <Col md={3}>
+                      <Form.Label className="small fw-semibold text-secondary mb-2 d-flex align-items-center gap-2">
+                        <Filter size={14} />
+                        Ordenar por
+                      </Form.Label>
+                      <Form.Select
+                        value={ordenacao}
+                        onChange={(e) => setOrdenacao(e.target.value as Ordenacao)}
+                        className="form-control-premium"
+                      >
+                        <option value="nome">Nome (A-Z)</option>
+                        <option value="precoMenor">Menor Preço</option>
+                        <option value="precoMaior">Maior Preço</option>
+                        <option value="qualidade">Maior Qualidade</option>
+                        <option value="quantidade">Mais Estoque</option>
+                      </Form.Select>
+                    </Col>
+                  </Row>
+
+                  {/* Botão limpar filtros */}
+                  {filtrosAtivos > 0 && (
+                    <div className="mt-3 text-end">
+                      <Button 
+                        variant="link" 
+                        onClick={limparFiltros}
+                        className="text-danger p-0"
+                        style={{ textDecoration: 'none', fontSize: '0.875rem' }}
+                      >
+                        <X size={16} className="me-1" />
+                        Limpar todos os filtros ({filtrosAtivos} ativo(s))
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {itensFiltrados.length === 0 ? (
+            {/* Resultados e contador */}
+            <div className="d-flex justify-content-between align-items-center mb-3 px-1">
+              <p className="mb-0 text-secondary">
+                <strong>{itensDisponiveis.length}</strong> item(s) disponível(is)
+                {filtrosAtivos > 0 && <span className="ms-1">• <span className="text-success">{filtrosAtivos} filtro(s)</span></span>}
+              </p>
+            </div>
+
+            {itensDisponiveis.length === 0 ? (
               <div className="empty-state card-premium">
                 <div className="empty-state-icon">🛒</div>
                 <h4 className="h5 text-secondary mb-2">Nenhum item disponível</h4>
-                <p className="text-secondary mb-0">Adicione itens ao estoque ou ajuste os filtros</p>
+                <p className="text-secondary mb-3">Ajuste os filtros ou adicione itens ao estoque</p>
+                {filtrosAtivos > 0 && (
+                  <Button 
+                    variant="outline-success" 
+                    onClick={limparFiltros}
+                    className="btn-premium"
+                  >
+                    Limpar Filtros
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="d-flex flex-column gap-4">
@@ -483,7 +744,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
                             />
                             
                             <Card.Body className="p-4">
-                              <div className="d-flex justify-content-between align-items-start mb-3">
+                              <div className="d-flex justify-content-between align-items-start mb-2">
                                 <Badge 
                                   bg="light" 
                                   text="dark" 
@@ -497,15 +758,21 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
                                 >
                                   {item.codigo}
                                 </Badge>
-                                {item.usado && (
-                                  <Badge 
-                                    bg="warning" 
-                                    text="dark"
-                                    style={{ fontSize: '0.65rem' }}
-                                  >
-                                    Usado
-                                  </Badge>
-                                )}
+                                <div className="d-flex flex-column align-items-end gap-1">
+                                  {item.usado && (
+                                    <Badge 
+                                      bg="warning" 
+                                      text="dark"
+                                      style={{ fontSize: '0.65rem' }}
+                                    >
+                                      Usado
+                                    </Badge>
+                                  )}
+                                  {/* Badge de Qualidade */}
+                                  <div className="d-flex align-items-center" title={getLabelQualidade(item.nivelQualidade)}>
+                                    {renderEstrelas(item.nivelQualidade)}
+                                  </div>
+                                </div>
                               </div>
 
                               <h5 className="fw-bold text-gray-900 mb-1" style={{ 
@@ -551,7 +818,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
             )}
           </div>
         ) : (
-          /* ABA DE HISTÓRICO */
+          /* ABA DE HISTÓRICO - mantido igual */
           <div>
             {/* Stats Histórico */}
             <Row className="g-3 mb-4">
@@ -595,7 +862,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
               </Col>
             </Row>
 
-            {/* Filtros */}
+            {/* Filtros do Histórico - mantido igual */}
             <div className="card-premium p-4 mb-4">
               <Row className="g-3 align-items-end">
                 <Col md={3}>
@@ -658,7 +925,7 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
               </Row>
             </div>
 
-            {/* Lista de Vendas */}
+            {/* Lista de Vendas - mantido igual */}
             <div className="d-flex flex-column gap-3">
               {vendasPorData.length === 0 ? (
                 <div className="empty-state card-premium">
@@ -789,8 +1056,10 @@ export default function VendasPage({ onVoltar }: VendasPageProps) {
       {itemSelecionado && (
         <VendaModal
           item={itemSelecionado}
+          itensDisponiveis={itensDisponiveis}
           onClose={() => setItemSelecionado(null)}
           onVender={handleVender}
+          onVenderCarrinho={handleVenderCarrinho}
         />
       )}
 

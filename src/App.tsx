@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   collection, 
   addDoc, 
@@ -22,7 +22,11 @@ import {
   Package,
   TrendingUp,
   DollarSign,
-  Grid
+  Grid,
+  Star,
+  Filter,
+  X,
+  SlidersHorizontal
 } from 'lucide-react';
 import ItemCard from './components/ItemCard';
 import ItemModal from './components/ItemModal';
@@ -32,11 +36,26 @@ import CategoriaModal from './components/CategoriaModal';
 import RelatorioModal from './components/RelatorioModal';
 import VendasPage from './pages/VendasPage';
 
+// Tipos de filtros avançados
+type Ordenacao = 'nome' | 'precoMenor' | 'precoMaior' | 'qualidade' | 'quantidade';
+type FiltroQualidade = 'todos' | '1' | '2' | '3' | '4' | '5';
+
 function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  
+  // Filtros existentes
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('');
+  
+  // NOVOS FILTROS
+  const [filtroQualidade, setFiltroQualidade] = useState<FiltroQualidade>('todos');
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>('nome');
+  const [precoMin, setPrecoMin] = useState<string>('');
+  const [precoMax, setPrecoMax] = useState<string>('');
+  const [mostrarUsados, setMostrarUsados] = useState<boolean | null>(null); // null = todos, true = só usados, false = só novos
+  const [mostrarFiltrosAvancados, setMostrarFiltrosAvancados] = useState(false);
+  
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -123,13 +142,54 @@ function App() {
     }
   };
 
-  const filteredItems = items.filter(item => {
-    const matchSearch = 
-      item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.codigo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCategoria = categoriaFiltro === '' || item.categoriaId === categoriaFiltro;
-    return matchSearch && matchCategoria;
-  });
+  // SISTEMA DE FILTROS AVANÇADOS
+  const filteredItems = useMemo(() => {
+    let resultado = items.filter(item => {
+      // Filtro de busca (nome/código)
+      const matchSearch = 
+        item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.codigo.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filtro de categoria
+      const matchCategoria = categoriaFiltro === '' || item.categoriaId === categoriaFiltro;
+      
+      // Filtro de qualidade
+      const matchQualidade = filtroQualidade === 'todos' || 
+        item.nivelQualidade === parseInt(filtroQualidade);
+      
+      // Filtro de preço
+      const preco = item.precoVenda;
+      const matchPrecoMin = precoMin === '' || preco >= parseFloat(precoMin);
+      const matchPrecoMax = precoMax === '' || preco <= parseFloat(precoMax);
+      
+      // Filtro de usado/novo
+      const matchUsado = mostrarUsados === null || item.usado === mostrarUsados;
+      
+      return matchSearch && matchCategoria && matchQualidade && 
+             matchPrecoMin && matchPrecoMax && matchUsado;
+    });
+
+    // SISTEMA DE ORDENAÇÃO
+    resultado.sort((a, b) => {
+      switch (ordenacao) {
+        case 'nome':
+          return a.nome.localeCompare(b.nome);
+        case 'precoMenor':
+          return a.precoVenda - b.precoVenda;
+        case 'precoMaior':
+          return b.precoVenda - a.precoVenda;
+        case 'qualidade':
+          return b.nivelQualidade - a.nivelQualidade; // Maior qualidade primeiro
+        case 'quantidade':
+          return b.quantidade - a.quantidade; // Mais estoque primeiro
+        default:
+          return 0;
+      }
+    });
+
+    return resultado;
+  }, [items, searchTerm, categoriaFiltro, filtroQualidade, ordenacao, 
+      precoMin, precoMax, mostrarUsados]);
 
   const itensPorCategoria = categorias
     .map(cat => ({
@@ -142,6 +202,31 @@ function App() {
   const totalItens = items.reduce((sum, item) => sum + item.quantidade, 0);
   const valorTotal = items.reduce((sum, item) => sum + (item.precoVenda * item.quantidade), 0);
   const categoriasAtivas = new Set(items.map(i => i.categoriaId)).size;
+
+  // Função para limpar todos os filtros
+  const limparFiltros = () => {
+    setSearchTerm('');
+    setCategoriaFiltro('');
+    setFiltroQualidade('todos');
+    setOrdenacao('nome');
+    setPrecoMin('');
+    setPrecoMax('');
+    setMostrarUsados(null);
+  };
+
+  // Contador de filtros ativos
+  const filtrosAtivos = [
+    searchTerm,
+    categoriaFiltro,
+    filtroQualidade !== 'todos',
+    precoMin || precoMax,
+    mostrarUsados !== null
+  ].filter(Boolean).length;
+
+  const getLabelQualidade = (nivel: number) => {
+    const labels = ['Básico', 'Inicial', 'Intermediário', 'Avançado', 'Premium'];
+    return labels[nivel - 1] || 'Básico';
+  };
 
   if (loading) {
     return (
@@ -229,7 +314,7 @@ function App() {
       <Container fluid="lg" className="py-4">
         {/* Stats Overview */}
         <Row className="g-3 mb-4">
-          <Col md={4}>
+          <Col md={3}>
             <div className="stat-card">
               <div className="d-flex align-items-center gap-3 mb-3">
                 <div className="rounded-lg p-2" style={{ background: 'var(--primary-50)' }}>
@@ -242,7 +327,7 @@ function App() {
             </div>
           </Col>
           
-          <Col md={4}>
+          <Col md={3}>
             <div className="stat-card">
               <div className="d-flex align-items-center gap-3 mb-3">
                 <div className="rounded-lg p-2" style={{ background: 'var(--success-50)' }}>
@@ -257,7 +342,7 @@ function App() {
             </div>
           </Col>
           
-          <Col md={4}>
+          <Col md={3}>
             <div className="stat-card">
               <div className="d-flex align-items-center gap-3 mb-3">
                 <div className="rounded-lg p-2" style={{ background: '#fef3c7' }}>
@@ -269,11 +354,27 @@ function App() {
               <div className="stat-label">categorias ativas</div>
             </div>
           </Col>
+          
+          <Col md={3}>
+            <div className="stat-card">
+              <div className="d-flex align-items-center gap-3 mb-3">
+                <div className="rounded-lg p-2" style={{ background: '#f0fdf4' }}>
+                  <Star size={20} style={{ color: '#16a34a' }} />
+                </div>
+                <span className="text-secondary small fw-medium">Itens Premium</span>
+              </div>
+              <div className="stat-value" style={{ color: '#16a34a' }}>
+                {items.filter(i => i.nivelQualidade >= 4).length}
+              </div>
+              <div className="stat-label">qualidade 4-5 estrelas</div>
+            </div>
+          </Col>
         </Row>
 
         {/* Search & Filter Section */}
         <div className="card-premium p-4 mb-4">
-          <Row className="g-3 align-items-end">
+          {/* Busca básica */}
+          <Row className="g-3 align-items-end mb-3">
             <Col md={5}>
               <Form.Label className="small fw-semibold text-secondary mb-2">Buscar itens</Form.Label>
               <InputGroup>
@@ -290,7 +391,7 @@ function App() {
             </Col>
             
             <Col md={4}>
-              <Form.Label className="small fw-semibold text-secondary mb-2">Filtrar por categoria</Form.Label>
+              <Form.Label className="small fw-semibold text-secondary mb-2">Categoria</Form.Label>
               <Form.Select
                 value={categoriaFiltro}
                 onChange={(e) => setCategoriaFiltro(e.target.value)}
@@ -306,25 +407,153 @@ function App() {
             </Col>
             
             <Col md={3}>
-              {categoriaFiltro && (
-                <Button 
-                  variant="outline-secondary" 
-                  onClick={() => setCategoriaFiltro('')}
-                  className="w-100 btn-premium"
-                >
-                  Limpar filtros
-                </Button>
-              )}
+              <Button 
+                variant={mostrarFiltrosAvancados ? "primary" : "light"}
+                onClick={() => setMostrarFiltrosAvancados(!mostrarFiltrosAvancados)}
+                className="w-100 btn-premium d-flex align-items-center justify-content-center gap-2"
+                style={!mostrarFiltrosAvancados ? { border: '1px solid #e5e7eb' } : {}}
+              >
+                <SlidersHorizontal size={18} />
+                Filtros Avançados
+                {filtrosAtivos > 0 && (
+                  <Badge bg="danger" className="ms-1">{filtrosAtivos}</Badge>
+                )}
+              </Button>
             </Col>
           </Row>
+
+          {/* Filtros Avançados */}
+          {mostrarFiltrosAvancados && (
+            <div className="pt-3 mt-3" style={{ borderTop: '1px solid #e5e7eb' }}>
+              <Row className="g-3 align-items-end">
+                {/* Filtro de Qualidade */}
+                <Col md={3}>
+                  <Form.Label className="small fw-semibold text-secondary mb-2 d-flex align-items-center gap-2">
+                    <Star size={14} />
+                    Qualidade
+                  </Form.Label>
+                  <Form.Select
+                    value={filtroQualidade}
+                    onChange={(e) => setFiltroQualidade(e.target.value as FiltroQualidade)}
+                    className="form-control-premium"
+                  >
+                    <option value="todos">Todas as qualidades</option>
+                    <option value="5">⭐⭐⭐⭐⭐ Premium</option>
+                    <option value="4">⭐⭐⭐⭐ Avançado</option>
+                    <option value="3">⭐⭐⭐ Intermediário</option>
+                    <option value="2">⭐⭐ Inicial</option>
+                    <option value="1">⭐ Básico</option>
+                  </Form.Select>
+                </Col>
+
+                {/* Filtro de Preço Mínimo */}
+                <Col md={2}>
+                  <Form.Label className="small fw-semibold text-secondary mb-2">
+                    Preço Mínimo
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    placeholder="R$ 0,00"
+                    value={precoMin}
+                    onChange={(e) => setPrecoMin(e.target.value)}
+                    className="form-control-premium"
+                  />
+                </Col>
+
+                {/* Filtro de Preço Máximo */}
+                <Col md={2}>
+                  <Form.Label className="small fw-semibold text-secondary mb-2">
+                    Preço Máximo
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    placeholder="R$ ∞"
+                    value={precoMax}
+                    onChange={(e) => setPrecoMax(e.target.value)}
+                    className="form-control-premium"
+                  />
+                </Col>
+
+                {/* Filtro de Usado/Novo */}
+                <Col md={2}>
+                  <Form.Label className="small fw-semibold text-secondary mb-2">
+                    Condição
+                  </Form.Label>
+                  <Form.Select
+                    value={mostrarUsados === null ? '' : mostrarUsados ? 'usado' : 'novo'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMostrarUsados(val === '' ? null : val === 'usado');
+                    }}
+                    className="form-control-premium"
+                  >
+                    <option value="">Todos</option>
+                    <option value="novo">Novos</option>
+                    <option value="usado">Usados</option>
+                  </Form.Select>
+                </Col>
+
+                {/* Ordenação */}
+                <Col md={3}>
+                  <Form.Label className="small fw-semibold text-secondary mb-2 d-flex align-items-center gap-2">
+                    <Filter size={14} />
+                    Ordenar por
+                  </Form.Label>
+                  <Form.Select
+                    value={ordenacao}
+                    onChange={(e) => setOrdenacao(e.target.value as Ordenacao)}
+                    className="form-control-premium"
+                  >
+                    <option value="nome">Nome (A-Z)</option>
+                    <option value="precoMenor">Menor Preço</option>
+                    <option value="precoMaior">Maior Preço</option>
+                    <option value="qualidade">Maior Qualidade</option>
+                    <option value="quantidade">Mais Estoque</option>
+                  </Form.Select>
+                </Col>
+              </Row>
+
+              {/* Botão limpar filtros */}
+              {filtrosAtivos > 0 && (
+                <div className="mt-3 text-end">
+                  <Button 
+                    variant="link" 
+                    onClick={limparFiltros}
+                    className="text-danger p-0"
+                    style={{ textDecoration: 'none', fontSize: '0.875rem' }}
+                  >
+                    <X size={16} className="me-1" />
+                    Limpar todos os filtros ({filtrosAtivos} ativo(s))
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Resultados e contador */}
+        <div className="d-flex justify-content-between align-items-center mb-3 px-1">
+          <p className="mb-0 text-secondary">
+            <strong>{filteredItems.length}</strong> item(s) encontrado(s)
+            {filtrosAtivos > 0 && <span className="ms-1">• <span className="text-primary">{filtrosAtivos} filtro(s)</span></span>}
+          </p>
         </div>
 
         {/* Items by Category */}
         {filteredItems.length === 0 ? (
           <div className="empty-state card-premium">
-            <div className="empty-state-icon">📦</div>
+            <div className="empty-state-icon">🔍</div>
             <h4 className="h5 text-secondary mb-2">Nenhum item encontrado</h4>
-            <p className="text-secondary mb-0">Adicione um novo item ou ajuste sua pesquisa</p>
+            <p className="text-secondary mb-3">Tente ajustar os filtros ou adicione um novo item</p>
+            {filtrosAtivos > 0 && (
+              <Button 
+                variant="outline-primary" 
+                onClick={limparFiltros}
+                className="btn-premium"
+              >
+                Limpar Filtros
+              </Button>
+            )}
           </div>
         ) : (
           <div className="d-flex flex-column gap-4">
@@ -353,7 +582,11 @@ function App() {
                 <Row className="g-3">
                   {itens.map(item => (
                     <Col key={item.id} md={6} lg={4} xl={3}>
-                      <ItemCard item={item} onClick={() => setSelectedItem(item)} />
+                      <ItemCard 
+                        item={item} 
+                        onClick={() => setSelectedItem(item)}
+                        mostrarQualidade={true}
+                      />
                     </Col>
                   ))}
                 </Row>
